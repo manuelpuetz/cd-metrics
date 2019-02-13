@@ -4,7 +4,8 @@ require 'date'
 require 'colorize'
 
 $baseUrl = ENV["BASE_URL"]
-$token = `cat ~/.flyrc | grep "team: nh" -A 3 | grep -E $'value( .*)?' | awk '{print $2}'`
+$team = ENV["TEAM"]
+$token = `cat ~/.flyrc | grep "team: #{$team}" -A 3 | grep -E $'value( .*)?' | awk '{print $2}'`
 
 def readableDuration(seconds)
     "%02d days, %02d hrs, %02d mins" % [seconds/86400, seconds/3600%24, seconds/60%60]
@@ -49,7 +50,7 @@ def getFromListOfBuilds(pipeline, jobName, listKey, candidateKey, candidateValue
     versionInfos = []
     i = 0
     buildNumberPath = builds["number"] ? "/#{builds["number"]}" : ""
-    buildsPath = "/api/v1/teams/nh/pipelines/#{pipeline}/jobs/#{jobName}/builds#{buildNumberPath}?limit=1000"
+    buildsPath = "/api/v1/teams/#{$team}/pipelines/#{pipeline}/jobs/#{jobName}/builds#{buildNumberPath}?limit=1000"
     allBuilds = builds["number"] ? [askConcourse(buildsPath)] : askConcourse(buildsPath)
     allBuilds.each do |jobBuild|
         if builds["max"] != nil && i >= builds["max"] then
@@ -167,7 +168,7 @@ def printCycleTimeByCommits(pipeline, cycle)
     # end
 end
 
-printCycleTimeByCommits("pipeline-name", {
+printCycleTimeByCommits("globus-connector", {
     "start_job" => { "name" => "build-and-test", "git_input" => "git-master"},
     "end_job" => { "name" => "deploy-prod", "git_input" => "git-rc"}
     }
