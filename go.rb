@@ -50,7 +50,7 @@ def getFromListOfBuilds(pipeline, jobName, listKey, candidateKey, candidateValue
     versionInfos = []
     i = 0
     buildNumberPath = builds["number"] ? "/#{builds["number"]}" : ""
-    buildsPath = "/api/v1/teams/#{$team}/pipelines/#{pipeline}/jobs/#{jobName}/builds#{buildNumberPath}?limit=1000"
+    buildsPath = "/api/v1/teams/#{$team}/pipelines/#{pipeline}/jobs/#{jobName}/builds#{buildNumberPath}?limit=10"
     allBuilds = builds["number"] ? [askConcourse(buildsPath)] : askConcourse(buildsPath)
     allBuilds.each do |jobBuild|
         if builds["max"] != nil && i >= builds["max"] then
@@ -78,7 +78,7 @@ end
 # cycle = a combination of "end" and "start" with the same commit, and a successful end
 def getCycles(startInputs, endInputs)
     result = endInputs.map do |ending|
-        startCandidates = startInputs.select{|x| x["shas"] != nil && (x["shas"] & ending["shas"]).length > 0 }
+        startCandidates = startInputs.select{|x| x["shas"] != nil && (x["shas"] && ending["shas"]).length > 0 }
         
         if startCandidates && startCandidates.length > 0 then
             earliestStartTime = startCandidates.map{|x| x["start_time"]}.min
@@ -110,8 +110,8 @@ end
 
 def addCommitShasToGitInputs(inputs, gitInputKey)
     inputsWithShas = inputs.map do |input|
-        gitInfo = input[gitInputKey]        
-        shas = gitInfo["metadata"].select{|x| x["name"] == "commit"}.map{|x| x["value"] }
+        gitInfo = input[gitInputKey]
+        shas = gitInfo["version"]["ref"]
         input["shas"] = shas
         input
     end
@@ -127,17 +127,17 @@ def printCycleTimeByCommits(pipeline, cycle)
 
     puts "Collecting data from #{$baseUrl}...".light_black
     buildInputs = addCommitShasToGitInputs(
-        getInputs(pipeline, buildJob, cycle["start_job"]["git_input"], {"max" => nil}), 
+        getInputs(pipeline, buildJob, cycle["start_job"]["git_input"], {"max" => nil}),
         cycle["start_job"]["git_input"])
     prodInputs = addCommitShasToGitInputs(
-        getInputs(pipeline, prodJob, cycle["end_job"]["git_input"], {"max" => nil}), 
+        getInputs(pipeline, prodJob, cycle["end_job"]["git_input"], {"max" => nil}),
         cycle["end_job"]["git_input"])
     cycles = getCycles(buildInputs, prodInputs)
 
     durations = cycles.map{|c| c["duration"]}
     puts "AVERAGE: ".cyan + "#{readableDuration(average(durations))}"
     puts "MEDIAN: ".cyan + "#{readableDuration(median(durations))}"
-    
+
     throughput = cycles.length.to_f / buildInputs.length.to_f * 100
     throughputText = "#{throughput.round(1)}% (#{cycles.length} of #{buildInputs.length})"
     if throughput > 50
@@ -149,7 +149,7 @@ def printCycleTimeByCommits(pipeline, cycle)
     latestCompletedCycle = cycles.max_by{ |c| c["end"]["time"] }
     timeSinceLastCycle = Time.now.to_i - latestCompletedCycle["end"]["time"]
     puts "LAST DEPLOY: ".cyan + "#{readableDuration(timeSinceLastCycle)}"
-    
+
     undeployedChanges = buildInputs.select{ |b| b["start_time"] > latestCompletedCycle["end"]["time"] }
     earliestUndeployedChange = undeployedChanges.min_by{ |b| b["start_time"] }
     if earliestUndeployedChange
@@ -168,9 +168,9 @@ def printCycleTimeByCommits(pipeline, cycle)
     # end
 end
 
-printCycleTimeByCommits("globus-connector", {
-    "start_job" => { "name" => "build-and-test", "git_input" => "git-master"},
-    "end_job" => { "name" => "deploy-prod", "git_input" => "git-rc"}
+printCycleTimeByCommits("access-management", {
+    "start_job" => { "name" => "bump-version", "git_input" => "access-management-git"},
+    "end_job" => { "name" => "agent-integration-tests", "git_input" => "access-management-git"}
     }
 )
 
