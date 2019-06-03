@@ -6,6 +6,7 @@ require 'colorize'
 $baseUrl = ENV["BASE_URL"]
 $team = ENV["TEAM"]
 $token = `cat ~/.flyrc | grep "team: #{$team}" -A 3 | grep -E $'value( .*)?' | awk '{print $2}'`
+$limit = 10
 
 def readableDuration(seconds)
     "%02d days, %02d hrs, %02d mins" % [seconds/86400, seconds/3600%24, seconds/60%60]
@@ -15,7 +16,7 @@ def readableDateTime(timestamp)
     Time.at(timestamp).strftime("%b %e, %l:%M %p")
 end
 
-def average(array)    
+def average(array)
     array.reduce(:+) / array.size
 end
 
@@ -50,7 +51,7 @@ def getFromListOfBuilds(pipeline, jobName, listKey, candidateKey, candidateValue
     versionInfos = []
     i = 0
     buildNumberPath = builds["number"] ? "/#{builds["number"]}" : ""
-    buildsPath = "/api/v1/teams/#{$team}/pipelines/#{pipeline}/jobs/#{jobName}/builds#{buildNumberPath}?limit=10"
+    buildsPath = "/api/v1/teams/#{$team}/pipelines/#{pipeline}/jobs/#{jobName}/builds#{buildNumberPath}?limit=#{$limit}"
     allBuilds = builds["number"] ? [askConcourse(buildsPath)] : askConcourse(buildsPath)
     allBuilds.each do |jobBuild|
         if builds["max"] != nil && i >= builds["max"] then
@@ -61,10 +62,10 @@ def getFromListOfBuilds(pipeline, jobName, listKey, candidateKey, candidateValue
         candidate = jobResources[listKey].select{|x| x[candidateKey] == candidateValue}[0]
         print ".".light_black
         versionInfos.push(
-            {   
+            {
                 "jobName" => jobName,
-                "name" => jobBuild["name"], 
-                candidateValue => candidate, 
+                "name" => jobBuild["name"],
+                candidateValue => candidate,
                 "status" => jobBuild["status"],
                 "start_time" => jobBuild["start_time"]
             }
@@ -79,13 +80,13 @@ end
 def getCycles(startInputs, endInputs)
     result = endInputs.map do |ending|
         startCandidates = startInputs.select{|x| x["shas"] != nil && (x["shas"] && ending["shas"]).length > 0 }
-        
+
         if startCandidates && startCandidates.length > 0 then
             earliestStartTime = startCandidates.map{|x| x["start_time"]}.min
             startJob = startCandidates.select{|x| x["start_time"] == earliestStartTime}[0]
-            
+
             duration = ending["start_time"] - startJob["start_time"]
-            { 
+            {
                 "duration" => duration,
                 "shas" => ending["shas"],
                 "start" => {
@@ -99,11 +100,11 @@ def getCycles(startInputs, endInputs)
                     "time" => ending["start_time"]
                 }
             }
-            
+
         else
             nil
         end
-        
+
     end
     result.select{|c| c != nil}
 end
