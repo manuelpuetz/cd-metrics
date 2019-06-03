@@ -1,0 +1,12 @@
+{
+    "my_pipeline": {
+        "start_job": {
+            "name": "my_first_job",
+            "git_input": "git"
+        },
+        "end_job": {
+            "name": "my_last_job",
+            "git_input": "git"
+        }
+    }
+}

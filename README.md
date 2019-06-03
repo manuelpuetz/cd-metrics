@@ -12,9 +12,10 @@ fly --target my-target login --team-name my-concourse-team --concourse-url https
 
 After login, `~/.flyrc` contains an authorization token that will be used for the Concourse requests.
 
-Go to the bottom of the ruby script and change it to point at the names of your own pipelines and jobs.
-
+Now:
 ```
+cp pipelines_example.yaml pipelines.yaml
+vim pipelines.yaml # add your pipeline config here
 BASE_URL=https://my.concourse.url TEAM=my-concourse-team ruby ./go.rb
 ```
 

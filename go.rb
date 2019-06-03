@@ -1,4 +1,5 @@
 require 'json'
+require 'yaml'
 require 'net/http'
 require 'date'
 require 'colorize'
@@ -169,11 +170,11 @@ def printCycleTimeByCommits(pipeline, cycle)
     # end
 end
 
-printCycleTimeByCommits("access-management", {
-    "start_job" => { "name" => "bump-version", "git_input" => "access-management-git"},
-    "end_job" => { "name" => "agent-integration-tests", "git_input" => "access-management-git"}
-    }
-)
+pipelines = YAML.load_file("pipelines.yaml")
+
+for pipeline in pipelines.keys() do
+   printCycleTimeByCommits(pipeline, pipelines[pipeline])
+end
 
 # TODO: Failure rate
 # TODO: MTTR
